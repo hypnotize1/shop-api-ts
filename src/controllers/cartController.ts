@@ -12,6 +12,10 @@ import { CustomRequest } from "../middlewares/auth.middleware.js";
 export const addItemToCart = async (req: CustomRequest, res: Response) => {
   const { productId, quantity, cartId } = req.body;
 
+  if (cartId && typeof cartId !== "string") {
+    throw new AppError("Invalid Cart ID format", 400);
+  }
+
   // 1. Check if the product exists in the database
   const product = await Product.findById(productId);
   if (!product) {
