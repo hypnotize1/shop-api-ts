@@ -12,8 +12,14 @@ import { CustomRequest } from "../middlewares/auth.middleware.js";
 export const addItemToCart = async (req: CustomRequest, res: Response) => {
   const { productId, quantity, cartId } = req.body;
 
+  // Check cartId type
   if (cartId && typeof cartId !== "string") {
     throw new AppError("Invalid Cart ID format", 400);
+  }
+
+  // Check ProductId type
+  if (!productId || typeof productId !== "string") {
+    throw new AppError("Invalid Product ID", 400);
   }
 
   // 1. Check if the product exists in the database
@@ -96,8 +102,12 @@ export const addItemToCart = async (req: CustomRequest, res: Response) => {
  * @access  Public (With Optional Authentication)
  */
 export const getCart = async (req: CustomRequest, res: Response) => {
+  if (req.query.cartId && typeof req.query.cartId !== "string") {
+    throw new AppError("Invalid Cart ID format", 400);
+  }
+
   // 1. Extract cartId from query parameters for guest users
-  const cartId = req.query.cartId as string;
+  const cartId = req.query.cartId;
   const user = req.user;
 
   let cart;
@@ -138,9 +148,15 @@ export const getCart = async (req: CustomRequest, res: Response) => {
  * @access  Public (With Optional Authentication)
  */
 export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
+  if (
+    (req.query.cartId && typeof req.query.cartId !== "string") ||
+    typeof req.params.productId !== "string"
+  ) {
+    throw new AppError("Invalid Cart/ProductID format", 400);
+  }
   // 1. Get productId from params and cartId from query
-  const productId = req.params.productId as string;
-  const cartId = req.query.cartId as string;
+  const productId = req.params.productId;
+  const cartId = req.query.cartId;
   const user = req.user;
 
   let cart;
@@ -190,10 +206,10 @@ export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
 export const updateQuantity = async (req: CustomRequest, res: Response) => {
   // Validate id's type
   if (
-    typeof req.query.cartId !== "string" ||
+    (req.query.cartId && typeof req.query.cartId !== "string") ||
     typeof req.params.productId !== "string"
   ) {
-    throw new AppError("Invalid Cart ID format", 400);
+    throw new AppError("Invalid Cart/ProductID ID format", 400);
   }
 
   // 1. Get IDs and the new quantity
