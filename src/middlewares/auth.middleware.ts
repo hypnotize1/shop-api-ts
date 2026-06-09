@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "../utils/appError.js";
+import { IUser } from "../interfaces/user.interface.js";
+import User from "../models/user.model.js";
 
 /**
  * Extended Express Request interface to attach authenticated user payload.
  */
 export interface CustomRequest extends Request {
-  user?: any;
+  user?: IUser;
 }
 
 /**
@@ -30,10 +32,26 @@ export const protect = async (
       token = req.headers.authorization.split(" ")[1];
 
       // Verify token integrity and expiration against environment secret
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!);
+      const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!) as {
+        id: string;
+        role: string;
+      };
+
+      // Find user in database from user id
+      const currentUser = await User.findById(decoded.id);
+
+      // If user has deleted account , deny
+      if (!currentUser) {
+        return next(
+          new AppError(
+            "The user belonging to this token no longer exist.",
+            404,
+          ),
+        );
+      }
 
       // Attach decoded payload to request object for downstream controllers
-      req.user = decoded;
+      req.user = currentUser;
       return next();
     } catch (err) {
       // Forward token validation failures to the global error handler
@@ -82,9 +100,23 @@ export const optionalProtect = async (
     try {
       token = req.headers.authorization.split(" ")[1];
 
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!);
+      const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!) as {
+        id: string;
+        role: string;
+      };
 
-      req.user = decoded;
+      const currentUser = await User.findById(decoded.id);
+
+      if (!currentUser) {
+        return next(
+          new AppError(
+            "The user belonging to this token no longer exist.",
+            404,
+          ),
+        );
+      }
+
+      req.user = currentUser;
 
       return next();
     } catch (err) {

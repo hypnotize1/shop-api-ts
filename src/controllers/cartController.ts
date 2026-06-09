@@ -3,6 +3,7 @@ import Product from "../models/product.model.js";
 import { AppError } from "../utils/appError.js";
 import Cart from "../models/cart.model.js";
 import { CustomRequest } from "../middlewares/auth.middleware.js";
+import { Types } from "mongoose";
 
 /**
  * @desc    Add product to Cart (Supports both Authenticated and Guest users)
@@ -19,7 +20,7 @@ export const addItemToCart = async (req: CustomRequest, res: Response) => {
 
   // Check ProductId type
   if (!productId || typeof productId !== "string") {
-    throw new AppError("Invalid Product ID", 400);
+    throw new AppError("Invalid Product ID format", 400);
   }
 
   // 1. Check if the product exists in the database
@@ -76,7 +77,7 @@ export const addItemToCart = async (req: CustomRequest, res: Response) => {
   } else {
     // If product is new, push it to the items array
     cart.items.push({
-      productId,
+      productId: new Types.ObjectId(productId),
       quantity,
     });
   }
