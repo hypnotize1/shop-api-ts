@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    // Target ES2022 for Node.js 20+
+    // This enables modern JavaScript features like top-level await
+    "target": "ES2022",
+
+    // Use Node16 module system for proper ESM support
+    // This handles both .mjs and .cjs files correctly
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+
+    // Output directory for compiled JavaScript
+    "outDir": "./dist",
+
+    // Source directory for TypeScript files
+    "rootDir": "./src",
+
+    // Enable all strict type checking options
+    "strict": true,
+
+    // Ensure consistent casing in imports
+    "forceConsistentCasingInFileNames": true,
+
+    // Skip type checking of declaration files for faster builds
+    "skipLibCheck": true,
+
+    // Generate source maps for debugging
+    "sourceMap": true,
+
+    // Generate declaration files for library projects
+    "declaration": true,
+
+    // Allow importing JSON files
+    "resolveJsonModule": true,
+
+    // Ensure each file can be safely transpiled independently
+    "isolatedModules": true,
+
+    // Enable ES module interop
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

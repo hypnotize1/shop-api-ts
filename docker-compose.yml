@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  # 1. MongoDB service
+  database:
+    image: mongo:6.0
+    platform: linux/amd64
+    container_name: shop-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  # 2. NodeJS service
+  api:
+    build: .
+    container_name: shop-backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database
+    env_file:
+      - .env
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./package.json
+          target: /app/package.json
+
+volumes:
+  mongo-data:
