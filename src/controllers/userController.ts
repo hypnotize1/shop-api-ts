@@ -94,6 +94,9 @@ export const loginUser = async (req: Request, res: Response) => {
  * @access  Private
  */
 export const getUserProfile = async (req: CustomRequest, res: Response) => {
+  if (!req.user) {
+    throw new AppError("You are not authorized!", 403);
+  }
   const userId = req.user.id;
 
   const user = await User.findById(userId).select("-password");
@@ -111,6 +114,10 @@ export const getUserProfile = async (req: CustomRequest, res: Response) => {
  * @access  Private
  */
 export const logoutUser = async (req: CustomRequest, res: Response) => {
+  if (!req.user) {
+    throw new AppError("You are not authorized!", 403);
+  }
+
   const userId = req.user.id;
 
   // Find user and delete refresh token from database
