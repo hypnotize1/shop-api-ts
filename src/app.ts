@@ -5,6 +5,7 @@ import userRouter from "./routes/userRoutes.js";
 import dotenv from "dotenv";
 import { globalErrorHandler } from "./middlewares/error.middleware.js";
 import cartRouter from "./routes/cartRoutes.js";
+import orderRouter from "./routes/orderRoutes.js";
 
 const app: Application = express();
 const port: number = 3000; // The port your express server will be running on.
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use("/api/v1/products", productRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/cart", cartRouter);
+app.use("/api/v1/orders", orderRouter);
 
 app.use(globalErrorHandler);
 

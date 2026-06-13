@@ -1,11 +1,10 @@
-version: "3.8"
-
 services:
   # 1. MongoDB service
   database:
     image: mongo:6.0
     platform: linux/amd64
     container_name: shop-mongo
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
     ports:
       - "27017:27017"
     volumes:

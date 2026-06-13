@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import Product from "../models/product.model.js";
 import { AppError } from "../utils/appError.js";
 import Cart from "../models/cart.model.js";
