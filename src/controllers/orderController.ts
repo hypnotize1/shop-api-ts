@@ -5,17 +5,14 @@ import Order from "../models/order.model.js";
 import Cart from "../models/cart.model.js";
 import Product from "../models/product.model.js";
 import { CustomRequest } from "../middlewares/auth.middleware.js";
+import redisClient from "../configs/redis.js";
 
 /**
  * @desc    Create a new order from user's cart using MongoDB ACID Transactions
  * @route   POST /api/v1/orders
  * @access  Private
  */
-export const createOrder = async (
-  req: CustomRequest,
-  res: Response,
-  next: NextFunction,
-) => {
+export const createOrder = async (req: CustomRequest, res: Response) => {
   const user = req.user;
 
   // Ensure user is authenticated
@@ -83,14 +80,13 @@ export const createOrder = async (
       finalOrder = newOrder[0];
     });
 
+    await redisClient.del("products:all");
+
     // Transaction successful: Send response
     res.status(201).json({
       message: "Order created successfully!",
       data: finalOrder,
     });
-  } catch (err) {
-    // Pass errors to the global error handler
-    return next(err);
   } finally {
     // End the session to release resources and prevent memory leaks
     await session.endSession();

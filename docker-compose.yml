@@ -10,7 +10,15 @@ services:
     volumes:
       - mongo-data:/data/db
 
-  # 2. NodeJS service
+  # 2. Redis Cache Service
+  cache:
+    image: redis:8.8-alpine
+    container_name: shop-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+
+  # 3. NodeJS service
   api:
     build: .
     container_name: shop-backend

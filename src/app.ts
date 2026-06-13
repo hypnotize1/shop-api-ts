@@ -1,9 +1,10 @@
 import express, { Application, Request, Response } from "express";
-import productRouter from "./routes/productRoutes.js";
-import { connectDB } from "./configs/db.js";
-import userRouter from "./routes/userRoutes.js";
 import dotenv from "dotenv";
+import { connectDB } from "./configs/db.js";
+import { connectRedis } from "./configs/redis.js";
 import { globalErrorHandler } from "./middlewares/error.middleware.js";
+import productRouter from "./routes/productRoutes.js";
+import userRouter from "./routes/userRoutes.js";
 import cartRouter from "./routes/cartRoutes.js";
 import orderRouter from "./routes/orderRoutes.js";
 
@@ -13,8 +14,9 @@ const port: number = 3000; // The port your express server will be running on.
 // Load env
 dotenv.config();
 
-// Database connection
+// Databases connection
 connectDB();
+connectRedis();
 
 /**
  * @desc    Global Middlewares
