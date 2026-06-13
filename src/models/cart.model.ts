@@ -8,6 +8,7 @@ const cartSchema = new Schema<ICart>(
       {
         productId: { type: Schema.Types.ObjectId, ref: "Product" },
         quantity: { type: Number, default: 1, min: 1 },
+        priceAtPurchase: Number,
       },
     ],
     totalPrice: { type: Number, default: 0 },

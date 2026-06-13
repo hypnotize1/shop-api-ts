@@ -1,273 +1,190 @@
 import { Response } from "express";
-import Product from "../models/product.model.js";
-import { AppError } from "../utils/appError.js";
-import Cart from "../models/cart.model.js";
-import { CustomRequest } from "../middlewares/auth.middleware.js";
 import { Types } from "mongoose";
+import Product from "../models/product.model.js";
+import Cart from "../models/cart.model.js";
+import { AppError } from "../utils/appError.js";
+import { CustomRequest } from "../middlewares/auth.middleware.js";
+import redisClient from "../configs/redis.js";
+import { syncCartToStorage } from "../utils/cartSync.js";
 
 /**
- * @desc    Add product to Cart (Supports both Authenticated and Guest users)
+ * @desc    Add product to Cart using Hybrid Write-Behind Caching
  * @route   POST /api/v1/cart
  * @access  Public
  */
 export const addItemToCart = async (req: CustomRequest, res: Response) => {
   const { productId, quantity, cartId } = req.body;
-
-  // Check cartId type
-  if (cartId && typeof cartId !== "string") {
-    throw new AppError("Invalid Cart ID format", 400);
-  }
-
-  // Check ProductId type
-  if (!productId || typeof productId !== "string") {
-    throw new AppError("Invalid Product ID format", 400);
-  }
-
-  // 1. Check if the product exists in the database
-  const product = await Product.findById(productId);
-  if (!product) {
-    throw new AppError("Product doesn't exist!", 404);
-  }
-
   const user = req.user;
-  let cart;
 
-  // 2. Fetch the cart based on user authentication status
-  if (user) {
-    cart = await Cart.findOne({ userId: user.id }).populate("items.productId");
+  // Validate ID formats
+  if (cartId && typeof cartId !== "string")
+    throw new AppError("Invalid Cart ID format", 400);
+  if (!productId || typeof productId !== "string")
+    throw new AppError("Invalid Product ID format", 400);
+
+  // 1. Fetch product from DB to ensure validity
+  const product = await Product.findById(productId).lean();
+  if (!product) throw new AppError("Product doesn't exist!", 404);
+
+  // 2. Generate unique Redis cache key
+  const resolvedCartId = cartId || new Types.ObjectId().toString();
+  const cacheKey = user
+    ? `cart:user:${user.id}`
+    : `cart:guest:${resolvedCartId}`;
+
+  // 3. Try fetching from Redis first
+  let cartData: any = null;
+  const cachedCart = await redisClient.get(cacheKey);
+
+  if (cachedCart) {
+    cartData = JSON.parse(cachedCart);
   } else {
-    if (cartId) {
-      cart = await Cart.findById(cartId).populate("items.productId");
-      if (!cart) {
-        throw new AppError(
-          "Your cart session has expired or been deleted!",
-          404,
-        );
-      }
-    }
+    // 4. Cache Miss: Fetch from MongoDB
+    const dbCart = user
+      ? await Cart.findOne({ userId: user.id }).populate("items.productId")
+      : await Cart.findById(resolvedCartId).populate("items.productId");
+
+    cartData = dbCart
+      ? dbCart.toObject()
+      : { _id: resolvedCartId, userId: user?.id, items: [], totalPrice: 0 };
   }
 
-  // 3. Scenario A: If no cart exists, create a new one
-  if (!cart) {
-    if (user) {
-      cart = await Cart.create({
-        userId: user.id,
-        items: [{ productId: product.id, quantity }],
-      });
-    } else {
-      cart = await Cart.create({
-        items: [{ productId: product.id, quantity }],
-      });
-    }
-
-    // Calculate initial total price for the new cart
-    cart.totalPrice = quantity * product.price;
-    await cart.save();
-    return res
-      .status(201)
-      .json({ message: "Product added successfully!", data: cart });
-  }
-
-  // 4. Scenario B: If cart exists, check if the product is already in the cart
-  const item = cart.items.find((el) => el.productId.equals(productId));
-
-  if (item) {
-    // If product exists, increase its quantity
-    item.quantity += quantity;
+  // 5. Update Cart Logic in Memory
+  const itemIndex = cartData.items.findIndex(
+    (el: any) => el.productId.toString() === productId.toString(),
+  );
+  if (itemIndex > -1) {
+    cartData.items[itemIndex].quantity += quantity;
   } else {
-    // If product is new, push it to the items array
-    cart.items.push({
+    cartData.items.push({
       productId: new Types.ObjectId(productId),
       quantity,
+      priceAtPurchase: product.price,
     });
   }
 
-  // 5. Recalculate the total price of the cart using reduce
-  cart.totalPrice = cart.items.reduce((sum, item) => {
-    const productInfo = item.productId as any;
-    // Fallback to initial product price if item is newly pushed and not populated yet
-    const price = productInfo?.price || product.price;
-    return sum + item.quantity * price;
+  // 6. Recalculate total price
+  cartData.totalPrice = cartData.items.reduce((sum: number, item: any) => {
+    return sum + item.quantity * item.priceAtPurchase;
   }, 0);
 
-  // 6. Save the updated cart to the database
-  await cart.save();
+  // 7. Sync to Redis and background Sync to MongoDB
+  await syncCartToStorage(
+    cacheKey,
+    cartData,
+    user ? { userId: user.id } : { _id: resolvedCartId },
+  );
 
-  // 7. Send successful response back to the client
-  res.status(200).json({ message: "Cart updated successfully!", data: cart });
+  res
+    .status(200)
+    .json({ message: "Cart updated instantly! ⚡", data: cartData });
 };
 
 /**
  * @desc    Get current user or guest cart
  * @route   GET /api/v1/cart
- * @access  Public (With Optional Authentication)
+ * @access  Public
  */
 export const getCart = async (req: CustomRequest, res: Response) => {
-  if (req.query.cartId && typeof req.query.cartId !== "string") {
-    throw new AppError("Invalid Cart ID format", 400);
-  }
-
-  // 1. Extract cartId from query parameters for guest users
-  const cartId = req.query.cartId;
+  const cartId = req.query.cartId as string;
   const user = req.user;
+  const cacheKey = user ? `cart:user:${user.id}` : `cart:guest:${cartId}`;
 
-  let cart;
-
-  // 2. Fetch the cart based on authentication status
-  if (user) {
-    // Write the mongoose code to find cart by userId and populate items.productId
-    cart = await Cart.findOne({ userId: user.id }).populate("items.productId");
-  } else {
-    // Write the mongoose code to find cart by cartId and populate items.productId
-    cart = await Cart.findById(cartId).populate("items.productId");
-    if (!cart) {
-      throw new AppError("Your cart session has expired or been deleted!", 404);
-    }
+  // 1. Try fetching from Redis first (Cache-Aside pattern)
+  if (user || cartId) {
+    const cachedCart = await redisClient.get(cacheKey);
+    if (cachedCart)
+      return res.status(200).json({
+        message: "Cart fetched from Redis!",
+        data: JSON.parse(cachedCart),
+      });
   }
 
-  // 3. If no cart exists in the database, return a mock empty cart structure
-  if (!cart) {
-    return res.status(200).json({
-      status: "success",
-      data: {
-        items: [],
-        totalPrice: 0,
-      },
-    });
-  }
+  // 2. Fetch from MongoDB if not in Redis
+  const cart = user
+    ? await Cart.findOne({ userId: user.id }).populate("items.productId")
+    : await Cart.findById(cartId).populate("items.productId");
 
-  // 4. If cart exists, return the actual database document
-  return res.status(200).json({
-    status: "success",
-    data: cart,
-  });
+  if (!cart)
+    return res.status(200).json({ data: { items: [], totalPrice: 0 } });
+
+  // 3. Update Redis cache for future requests
+  if (user || cartId)
+    await redisClient.setEx(cacheKey, 604800, JSON.stringify(cart));
+
+  res.status(200).json({ status: "success", data: cart });
 };
 
 /**
  * @desc    Remove specific item from cart
  * @route   DELETE /api/v1/cart/:productId
- * @access  Public (With Optional Authentication)
  */
 export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
-  if (
-    (req.query.cartId && typeof req.query.cartId !== "string") ||
-    typeof req.params.productId !== "string"
-  ) {
-    throw new AppError("Invalid Cart/ProductID format", 400);
-  }
-  // 1. Get productId from params and cartId from query
-  const productId = req.params.productId;
-  const cartId = req.query.cartId;
+  const { productId } = req.params;
+  const cartId = req.query.cartId as string;
   const user = req.user;
+  const cacheKey = user ? `cart:user:${user.id}` : `cart:guest:${cartId}`;
 
-  let cart;
+  // 1. Fetch cart from DB
+  const cart = await (user
+    ? Cart.findOne({ userId: user.id })
+    : Cart.findById(cartId));
+  if (!cart) throw new AppError("Cart not found", 404);
 
-  // 2.Fetch the cart
-  if (user) {
-    // Write the mongoose code to find cart by userId and populate items.productId
-    cart = await Cart.findOne({ userId: user.id }).populate("items.productId");
-  } else {
-    // Write the mongoose code to find cart by cartId and populate items.productId
-    if (cartId) {
-      cart = await Cart.findById(cartId).populate("items.productId");
-    } else {
-      throw new AppError("Cart ID is required for guest users!", 400);
-    }
-  }
+  // 2. Remove item and recalculate
+  cart.items = cart.items.filter(
+    (item) => item.productId.toString() !== productId,
+  );
+  cart.totalPrice = cart.items.reduce(
+    (sum, item) => sum + item.quantity * (item.price || 0),
+    0,
+  );
 
-  if (!cart) {
-    throw new AppError("Your cart session has expired or been deleted!", 404);
-  }
+  // 3. Sync to Redis and background Sync to MongoDB
+  await syncCartToStorage(
+    cacheKey,
+    cart.toObject(),
+    user ? { userId: user.id } : { _id: cartId },
+  );
 
-  // 3. Remove the item from the cart.items array
-  cart.items = cart.items.filter((e) => {
-    const currentProductId = e.productId as any;
-    return !currentProductId.equals(productId);
-  });
-
-  // 4. Recalculate totalPrice and save cart
-  cart.totalPrice = cart.items.reduce((total, item) => {
-    const product = item.productId as any;
-    return total + product.price * item.quantity;
-  }, 0);
-
-  await cart.save();
-
-  // Send response
-  res
-    .status(200)
-    .json({ message: "Product removed successfully!", data: cart });
+  res.status(200).json({ message: "Product removed!", data: cart });
 };
 
 /**
- * @desc   Update cart item quantity
- * @route  PUT /api/v1/cart/:productId
- * @access Public (With Optional Authentication)
+ * @desc    Update cart item quantity
+ * @route   PUT /api/v1/cart/:productId
  */
 export const updateQuantity = async (req: CustomRequest, res: Response) => {
-  // Validate id's type
-  if (
-    (req.query.cartId && typeof req.query.cartId !== "string") ||
-    typeof req.params.productId !== "string"
-  ) {
-    throw new AppError("Invalid Cart/ProductID ID format", 400);
-  }
-
-  // 1. Get IDs and the new quantity
-  const productId = req.params.productId;
-  const cartId = req.query.cartId;
+  const { productId } = req.params;
   const { quantity } = req.body;
+  const cartId = req.query.cartId as string;
   const user = req.user;
+  const cacheKey = user ? `cart:user:${user.id}` : `cart:guest:${cartId}`;
 
-  // Validate quantity
-  if (!quantity || quantity < 1) {
-    throw new AppError("Quantity must be at least 1", 400);
-  }
+  // 1. Fetch cart from DB
+  const cart = await (user
+    ? Cart.findOne({ userId: user.id })
+    : Cart.findById(cartId));
+  if (!cart) throw new AppError("Cart not found", 404);
 
-  let cart;
+  // 2. Update quantity and recalculate
+  const item = cart.items.find(
+    (item) => item.productId.toString() === productId,
+  );
+  if (!item) throw new AppError("Product not in cart", 404);
 
-  // 2.Fetch the cart
-  if (user) {
-    // Write the mongoose code to find cart by userId and populate items.productId
-    cart = await Cart.findOne({ userId: user.id }).populate("items.productId");
-  } else {
-    // Write the mongoose code to find cart by cartId and populate items.productId
-    if (cartId) {
-      cart = await Cart.findById(cartId).populate("items.productId");
-    } else {
-      throw new AppError("Cart ID is required for guest users!", 400);
-    }
-  }
+  item.quantity = quantity;
+  cart.totalPrice = cart.items.reduce(
+    (sum, item) => sum + item.quantity * (item.priceAtPurchase || 0),
+    0,
+  );
 
-  if (!cart) {
-    throw new AppError("Your cart session has expired or been deleted!", 404);
-  }
+  // 3. Sync to Redis and background Sync to MongoDB
+  await syncCartToStorage(
+    cacheKey,
+    cart.toObject(),
+    user ? { userId: user.id } : { _id: cartId },
+  );
 
-  // 3. Find the specific item index in the cart
-  const itemIndex = cart.items.findIndex((e) => {
-    const currentProductId = e.productId as any;
-    return currentProductId.equals(productId);
-  });
-
-  // Guart Clause: If product is not in the cart array
-  if (itemIndex === -1) {
-    throw new AppError("Product not found in your cart!", 404);
-  }
-
-  // 4. Update the quantity of that specific item
-  cart.items[itemIndex].quantity = quantity;
-
-  // 5. Recalculate totalPrice
-  cart.totalPrice = cart.items.reduce((total, item) => {
-    const product = item.productId as any;
-    return total + product.price * item.quantity;
-  }, 0);
-
-  // 6. Save and send response
-  await cart.save();
-
-  res.status(200).json({
-    message: "Cart updated successfully!",
-    data: cart,
-  });
+  res.status(200).json({ message: "Quantity updated!", data: cart });
 };
