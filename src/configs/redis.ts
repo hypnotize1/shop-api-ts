@@ -1,25 +1,26 @@
 import { createClient } from "redis";
+import logger from "../utils/logger.js";
 
-// Initialize the Redis client using the URL from environment variables
 const redisClient = createClient({
   url: process.env.REDIS_URL,
 });
 
-// Event listeners for monitoring the connection
+// Event listeners using our centralized logger
 redisClient.on("error", (err) => {
-  console.error("Redis client Error!", err);
+  logger.error("Redis client Error!", { error: err });
 });
 
 redisClient.on("connect", () => {
-  console.log("Redis connected successfully!");
+  logger.info("Redis connected successfully!");
 });
 
-// Export a function to establish the connection
 export const connectRedis = async () => {
   try {
     await redisClient.connect();
   } catch (err) {
-    console.error("Faild to connect to Redis:", err);
+    logger.error("Failed to connect to Redis, shutting down...", {
+      error: err,
+    });
     process.exit(1);
   }
 };

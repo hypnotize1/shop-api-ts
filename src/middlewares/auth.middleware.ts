@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { AppError } from "../utils/appError.js";
 import { IUser } from "../interfaces/user.interface.js";
 import User from "../models/user.model.js";
+import logger from "../utils/logger.js";
 
 /**
  * Extended Express Request interface to attach authenticated user payload.
@@ -10,6 +11,19 @@ import User from "../models/user.model.js";
 export interface CustomRequest extends Request {
   user?: IUser;
 }
+
+const verifyToken = async (token: string) => {
+  const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!) as {
+    id: string;
+  };
+  const user = await User.findById(decoded.id);
+  if (!user)
+    throw new AppError(
+      "The user belonging to this token no longer exist.",
+      404,
+    );
+  return user;
+};
 
 /**
  * @desc    Strict authentication guard. Blocks request if a valid AT is missing.
@@ -20,48 +34,31 @@ export const protect = async (
   res: Response,
   next: NextFunction,
 ) => {
-  let token: string | undefined;
+  try {
+    const authHeader = req.headers.authorization;
 
-  // Extract token from Authorization header (Bearer schema)
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      // Split token from Bearer work
-      token = req.headers.authorization.split(" ")[1];
-
-      // Verify token integrity and expiration against environment secret
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!) as {
-        id: string;
-        role: string;
-      };
-
-      // Find user in database from user id
-      const currentUser = await User.findById(decoded.id);
-
-      // If user has deleted account , deny
-      if (!currentUser) {
-        return next(
-          new AppError(
-            "The user belonging to this token no longer exist.",
-            404,
-          ),
-        );
-      }
-
-      // Attach decoded payload to request object for downstream controllers
-      req.user = currentUser;
-      return next();
-    } catch (err) {
-      // Forward token validation failures to the global error handler
-      return next(new AppError("Invalid or expired access token!", 401));
+    // Extract token from Authorization header (Bearer schema)
+    if (!authHeader?.startsWith("Bearer")) {
+      throw new AppError("Authentication required. Token not found!", 401);
     }
-  }
 
-  // Enforce authentication if no token was extracted
-  if (!token) {
-    return next(new AppError("Authentication required. Token not found!", 401));
+    // Split token from Bearer work
+    const token = authHeader.split(" ")[1];
+
+    // Attach decoded payload to request object for downstream controllers
+    req.user = await verifyToken(token);
+    return next();
+  } catch (err) {
+    // Forward token validation failures to the global error handler
+    logger.warn(
+      `Failed authentication attempt: ${err instanceof Error ? err.message : "Unknown error"}`,
+    );
+
+    next(
+      err instanceof AppError
+        ? err
+        : new AppError("invalid or expired access token!", 401),
+    );
   }
 };
 
@@ -75,15 +72,15 @@ export const admin = async (
   next: NextFunction,
 ) => {
   // Ensure user identity exists and possesses admin privileges
-  if (req.user && req.user.role === "admin") {
-    return next();
+  if (req.user?.role !== "admin") {
+    logger.warn(`Unathorized admin access attempt by user: ${req.user?.id}`);
+    return next(new AppError("Access denied. Admin privilages required!", 403));
   }
-
-  return next(new AppError("Access denied. Admin privileges required!", 403));
+  next();
 };
 
 /**
- * @desc    Lenient authentication middleware. Populates req.user if token is valid,
+ * @desc   Lenient authentication middleware. Populates req.user if token is valid,
  * but gracefully passes the request downstream if unauthenticated.
  */
 export const optionalProtect = async (
@@ -91,44 +88,14 @@ export const optionalProtect = async (
   res: Response,
   next: NextFunction,
 ) => {
-  let token: string | undefined;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      token = req.headers.authorization.split(" ")[1];
-
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN!) as {
-        id: string;
-        role: string;
-      };
-
-      const currentUser = await User.findById(decoded.id);
-
-      if (!currentUser) {
-        return next(
-          new AppError(
-            "The user belonging to this token no longer exist.",
-            404,
-          ),
-        );
-      }
-
-      req.user = currentUser;
-
-      return next();
-    } catch (err) {
-      // Silently discard invalid tokens and proceed as a guest user
-      req.user = undefined;
-      return next();
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (token) {
+      req.user = await verifyToken(token);
     }
-  }
-
-  // Proceed as a guest user if no token is presented
-  if (!token) {
+  } catch (err) {
+    logger.info("Optional auth failed, proceeding as guest.");
     req.user = undefined;
-    return next();
   }
+  next();
 };

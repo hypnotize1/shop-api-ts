@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger.js";
 
 export const globalErrorHandler = (
   err: any,
@@ -8,6 +9,8 @@ export const globalErrorHandler = (
 ) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
+
+  logger.error(`Error ${err.statusCode}: ${err.message}`, { stack: err.stack });
 
   return res.status(err.statusCode).json({
     status: err.status,
