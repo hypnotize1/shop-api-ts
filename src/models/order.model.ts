@@ -7,6 +7,7 @@ const orderSchema = new Schema<IOrder>(
       type: Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     items: [
       {
