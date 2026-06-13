@@ -77,6 +77,8 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       cart.totalPrice = 0;
       await cart.save({ session });
 
+      await redisClient.del(`cart:user:${user.id}`);
+
       finalOrder = newOrder[0];
     });
 
