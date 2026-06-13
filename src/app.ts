@@ -7,6 +7,7 @@ import productRouter from "./routes/productRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import cartRouter from "./routes/cartRoutes.js";
 import orderRouter from "./routes/orderRoutes.js";
+import paymentRouter from "./routes/payment.routes.js";
 
 const app: Application = express();
 const port: number = 3000; // The port your express server will be running on.
@@ -34,6 +35,7 @@ app.use("/api/v1/products", productRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/orders", orderRouter);
+app.use("/api/v1/payment", paymentRouter);
 
 app.use(globalErrorHandler);
 

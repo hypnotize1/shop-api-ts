@@ -23,12 +23,15 @@ const orderSchema = new Schema<IOrder>(
     status: {
       type: String,
       required: true,
-      enum: ["pending", "paid", "failed"],
+      enum: ["pending", "paid", "shipped", "delivered", "cancelled"],
       default: "pending",
     },
-    transactionId: {
-      type: String,
+    paymentDetails: {
+      transactionId: String,
+      authority: String,
+      gatewayStatus: String,
     },
+    shippingAddress: { type: String, required: true },
   },
   { timestamps: true },
 );
