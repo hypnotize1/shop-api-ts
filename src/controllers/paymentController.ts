@@ -15,24 +15,31 @@ const BASE_URL = IS_SANDBOX
 /**
  * @openapi
  * /payment/request:
- * post:
- * summary: Initiate a ZarinPal payment request
- * tags: [Payment]
- * security:
- * - bearerAuth: []
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required: [orderId]
- * properties:
- * orderId:
- * type: string
- * responses:
- * 200:
- * description: Payment request created successfully
+ *   post:
+ *     summary: Initiate a ZarinPal payment request
+ *     tags: [Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Payment request created successfully
+ *       400:
+ *         description: Payment request failed
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Order not found
  */
 export const requestPayment = async (req: CustomRequest, res: Response) => {
   const { orderId } = req.body;
@@ -67,23 +74,27 @@ export const requestPayment = async (req: CustomRequest, res: Response) => {
 /**
  * @openapi
  * /payment/verify:
- * get:
- * summary: Verify payment after redirect from ZarinPal
- * tags: [Payment]
- * parameters:
- * - in: query
- * name: Authority
- * required: true
- * schema:
- * type: string
- * - in: query
- * name: Status
- * required: true
- * schema:
- * type: string
- * responses:
- * 200:
- * description: Payment verified successfully
+ *   get:
+ *     summary: Verify payment after redirect from ZarinPal
+ *     tags: [Payment]
+ *     parameters:
+ *       - in: query
+ *         name: Authority
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: Status
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Payment verified successfully
+ *       400:
+ *         description: Payment failed or verification failed
+ *       404:
+ *         description: Order not found
  */
 export const verifyPayment = async (req: CustomRequest, res: Response) => {
   const { Authority, Status } = req.query as {

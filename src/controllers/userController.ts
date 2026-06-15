@@ -11,25 +11,35 @@ type RegisterUserRequest = Request<any, any, IUser>;
 /**
  * @openapi
  * /user/register:
- * post:
- * summary: Register a new user
- * tags: [User]
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * $ref: '#/components/schemas/User'
- * type: object
- * required: [name, email, age, password]
- * properties:
- * name: { type: string }
- * email: { type: string }
- * age: { type: number }
- * password: { type: string }
- * responses:
- * 201: { description: "User created successfully" }
- * 400: { description: "Validation error or email exists" }
+ *   post:
+ *     summary: Register a new user
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - age
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               age:
+ *                 type: number
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: Validation error or email already exists
  */
 export const registerUser = async (req: RegisterUserRequest, res: Response) => {
   const { name, email, age, password } = req.body;
@@ -64,22 +74,31 @@ export const registerUser = async (req: RegisterUserRequest, res: Response) => {
 /**
  * @openapi
  * /user/login:
- * post:
- * summary: Login user and get tokens
- * tags: [User]
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required: [email, password]
- * properties:
- * email: { type: string }
- * password: { type: string }
- * responses:
- * 200: { description: "Login successful" }
- * 404: { description: "Invalid email or password" }
+ *   post:
+ *     summary: Login user and get tokens
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       400:
+ *         description: Invalid email or password
+ *       404:
+ *         description: User not found
  */
 export const loginUser = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -124,14 +143,18 @@ export const loginUser = async (req: Request, res: Response) => {
 /**
  * @openapi
  * /user/profile:
- * get:
- * summary: Get current user profile
- * tags: [User]
- * security:
- * - bearerAuth: []
- * responses:
- * 200: { description: "User profile data" }
- * 403: { description: "Not authorized" }
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile data
+ *       403:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
  */
 export const getUserProfile = async (req: CustomRequest, res: Response) => {
   if (!req.user) {
@@ -151,13 +174,18 @@ export const getUserProfile = async (req: CustomRequest, res: Response) => {
 /**
  * @openapi
  * /user/logout:
- * post:
- * summary: Logout and invalidate refresh token
- * tags: [User]
- * security:
- * - bearerAuth: []
- * responses:
- * 200: { description: "Logged out successfully" }
+ *   post:
+ *     summary: Logout and invalidate refresh token
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *       403:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
  */
 export const logoutUser = async (req: CustomRequest, res: Response) => {
   if (!req.user) {

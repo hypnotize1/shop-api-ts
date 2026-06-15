@@ -11,29 +11,38 @@ type CreateProductRequest = CustomRequest & Request<any, any, IProduct>;
 /**
  * @openapi
  * /products:
- * post:
- * summary: Create a new product
- * tags: [Product]
- * security:
- * - bearerAuth: []
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required: [title, price, stock]
- * properties:
- * title: { type: string }
- * price: { type: number }
- * stock: { type: number }
- * responses:
- * 201: { description: "Product created" }
- * get:
- * summary: Get all products
- * tags: [Product]
- * responses:
- * 200: { description: "List of products (Cached)" }
+ *   post:
+ *     summary: Create a new product
+ *     tags: [Product]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - price
+ *               - stock
+ *             properties:
+ *               title:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stock:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Product created
+ *
+ *   get:
+ *     summary: Get all products
+ *     tags: [Product]
+ *     responses:
+ *       200:
+ *         description: List of products (Cached)
  */
 export const createProduct = async (
   req: CreateProductRequest,
@@ -106,41 +115,33 @@ export const getAllProducts = async (req: Request, res: Response) => {
 /**
  * @openapi
  * /products/{slug}:
- * get:
- * summary: Get single product by slug
- * tags: [Product]
- * parameters:
- * - in: path
- * name: slug
- * required: true
- * schema: { type: string }
- * responses:
- * 200: { description: "Product found" }
- * 404: { description: "Product not found" }
- * put:
- * summary: Update a product
- * tags: [Product]
- * security:
- * - bearerAuth: []
- * parameters:
- * - in: path
- * name: slug
- * required: true
- * schema: { type: string }
- * responses:
- * 200: { description: "Product updated" }
- * delete:
- * summary: Delete a product
- * tags: [Product]
- * security:
- * - bearerAuth: []
- * parameters:
- * - in: path
- * name: slug
- * required: true
- * schema: { type: string }
- * responses:
- * 200: { description: "Product deleted" }
+ *   get:
+ *     summary: Get single product by slug
+ *     tags: [Product]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product found
+ *
+ *   put:
+ *     summary: Update a product
+ *     tags: [Product]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product updated
  */
 type GetProductParams = { slug: string };
 

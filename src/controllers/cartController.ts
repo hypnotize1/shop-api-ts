@@ -10,30 +10,38 @@ import { syncCartToStorage } from "../utils/cartSync.js";
 /**
  * @openapi
  * /cart:
- * post:
- * summary: Add product to Cart (Hybrid Write-Behind)
- * tags: [Cart]
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * productId: { type: string }
- * quantity: { type: number }
- * cartId: { type: string }
- * responses:
- * 200: { description: "Cart updated instantly" }
- * get:
- * summary: Get user or guest cart
- * tags: [Cart]
- * parameters:
- * - in: query
- * name: cartId
- * schema: { type: string }
- * responses:
- * 200: { description: "Cart fetched (Redis/MongoDB)" }
+ *   post:
+ *     summary: Add product to Cart (Hybrid Write-Behind)
+ *     tags: [Cart]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               productId:
+ *                 type: string
+ *               quantity:
+ *                 type: number
+ *               cartId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Cart updated instantly
+ *
+ *   get:
+ *     summary: Get user or guest cart
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: query
+ *         name: cartId
+ *         required: false
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cart fetched (Redis/MongoDB)
  */
 export const addItemToCart = async (req: CustomRequest, res: Response) => {
   const { productId, quantity, cartId } = req.body;
@@ -136,34 +144,40 @@ export const getCart = async (req: CustomRequest, res: Response) => {
 /**
  * @openapi
  * /cart/{productId}:
- * delete:
- * summary: Remove item from cart
- * tags: [Cart]
- * parameters:
- * - in: path
- * name: productId
- * required: true
- * schema: { type: string }
- * responses:
- * 200: { description: "Product removed" }
- * put:
- * summary: Update item quantity
- * tags: [Cart]
- * parameters:
- * - in: path
- * name: productId
- * required: true
- * schema: { type: string }
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * quantity: { type: number }
- * responses:
- * 200: { description: "Quantity updated" }
+ *   delete:
+ *     summary: Remove item from cart
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product removed
+ *
+ *   put:
+ *     summary: Update item quantity
+ *     tags: [Cart]
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               quantity:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Quantity updated
  */
 export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
   const { productId } = req.params;
