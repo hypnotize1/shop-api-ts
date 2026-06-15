@@ -90,24 +90,6 @@ const options = {
           },
         },
 
-        CartItem: {
-          type: "object",
-          required: ["productId", "quantity"],
-          properties: {
-            productId: {
-              type: "string",
-            },
-            quantity: {
-              type: "number",
-              example: 2,
-            },
-            priceAtPurchase: {
-              type: "number",
-              example: 1500000,
-            },
-          },
-        },
-
         Cart: {
           type: "object",
           required: ["items", "totalPrice"],
@@ -119,10 +101,17 @@ const options = {
             userId: {
               type: "string",
             },
+
             items: {
               type: "array",
               items: {
-                $ref: "#/components/schemas/CartItem",
+                type: "object",
+                required: ["productId", "quantity"],
+                properties: {
+                  productId: { type: "string" },
+                  quantity: { type: "number", example: 2 },
+                  priceAtPurchase: { type: "number", example: 1500000 },
+                },
               },
             },
             totalPrice: {
@@ -138,42 +127,6 @@ const options = {
               type: "string",
               format: "date-time",
               example: "2025-01-02T12:00:00.000Z",
-            },
-          },
-        },
-
-        OrderStatus: {
-          type: "string",
-          enum: ["pending", "paid", "shipped", "delivered", "cancelled"],
-        },
-
-        OrderItem: {
-          type: "object",
-          required: ["productId", "quantity", "price"],
-          properties: {
-            productId: {
-              type: "string",
-            },
-            quantity: {
-              type: "number",
-            },
-            price: {
-              type: "number",
-            },
-          },
-        },
-
-        PaymentDetails: {
-          type: "object",
-          properties: {
-            transactionId: {
-              type: "string",
-            },
-            authority: {
-              type: "string",
-            },
-            gatewayStatus: {
-              type: "string",
             },
           },
         },
@@ -198,18 +151,29 @@ const options = {
             items: {
               type: "array",
               items: {
-                $ref: "#/components/schemas/OrderItem",
+                type: "object",
+                required: ["productId", "quantity", "price"],
+                properties: {
+                  productId: { type: "string" },
+                  quantity: { type: "number" },
+                  price: { type: "number" },
+                },
               },
             },
             totalPrice: {
               type: "number",
             },
             status: {
-              $ref: "#/components/schemas/OrderStatus",
-              example: "pending",
+              type: "string",
+              enum: ["pending", "paid", "shipped", "delivered", "cancelled"],
             },
             paymentDetails: {
-              $ref: "#/components/schemas/PaymentDetails",
+              type: "object",
+              properties: {
+                transactionId: { type: "string" },
+                authority: { type: "string" },
+                gatewayStatus: { type: "string" },
+              },
             },
             shippingAddress: {
               type: "string",
