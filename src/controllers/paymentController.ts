@@ -13,9 +13,26 @@ const BASE_URL = IS_SANDBOX
   : "https://api.zarinpal.com";
 
 /**
- * @desc    Initiate payment request with ZarinPal
- * @route   POST /api/v1/payment/request
- * @access  Private
+ * @openapi
+ * /payment/request:
+ * post:
+ * summary: Initiate a ZarinPal payment request
+ * tags: [Payment]
+ * security:
+ * - bearerAuth: []
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * required: [orderId]
+ * properties:
+ * orderId:
+ * type: string
+ * responses:
+ * 200:
+ * description: Payment request created successfully
  */
 export const requestPayment = async (req: CustomRequest, res: Response) => {
   const { orderId } = req.body;
@@ -48,9 +65,25 @@ export const requestPayment = async (req: CustomRequest, res: Response) => {
 };
 
 /**
- * @desc    Verify payment after redirecting back from ZarinPal
- * @route   GET /api/v1/payment/verify
- * @access  Public
+ * @openapi
+ * /payment/verify:
+ * get:
+ * summary: Verify payment after redirect from ZarinPal
+ * tags: [Payment]
+ * parameters:
+ * - in: query
+ * name: Authority
+ * required: true
+ * schema:
+ * type: string
+ * - in: query
+ * name: Status
+ * required: true
+ * schema:
+ * type: string
+ * responses:
+ * 200:
+ * description: Payment verified successfully
  */
 export const verifyPayment = async (req: CustomRequest, res: Response) => {
   const { Authority, Status } = req.query as {

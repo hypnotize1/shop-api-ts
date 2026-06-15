@@ -8,9 +8,32 @@ import redisClient from "../configs/redis.js";
 import { syncCartToStorage } from "../utils/cartSync.js";
 
 /**
- * @desc    Add product to Cart using Hybrid Write-Behind Caching
- * @route   POST /api/v1/cart
- * @access  Public
+ * @openapi
+ * /cart:
+ * post:
+ * summary: Add product to Cart (Hybrid Write-Behind)
+ * tags: [Cart]
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * productId: { type: string }
+ * quantity: { type: number }
+ * cartId: { type: string }
+ * responses:
+ * 200: { description: "Cart updated instantly" }
+ * get:
+ * summary: Get user or guest cart
+ * tags: [Cart]
+ * parameters:
+ * - in: query
+ * name: cartId
+ * schema: { type: string }
+ * responses:
+ * 200: { description: "Cart fetched (Redis/MongoDB)" }
  */
 export const addItemToCart = async (req: CustomRequest, res: Response) => {
   const { productId, quantity, cartId } = req.body;
@@ -80,11 +103,6 @@ export const addItemToCart = async (req: CustomRequest, res: Response) => {
     .json({ message: "Cart updated instantly! ⚡", data: cartData });
 };
 
-/**
- * @desc    Get current user or guest cart
- * @route   GET /api/v1/cart
- * @access  Public
- */
 export const getCart = async (req: CustomRequest, res: Response) => {
   const cartId = req.query.cartId as string;
   const user = req.user;
@@ -116,8 +134,36 @@ export const getCart = async (req: CustomRequest, res: Response) => {
 };
 
 /**
- * @desc    Remove specific item from cart
- * @route   DELETE /api/v1/cart/:productId
+ * @openapi
+ * /cart/{productId}:
+ * delete:
+ * summary: Remove item from cart
+ * tags: [Cart]
+ * parameters:
+ * - in: path
+ * name: productId
+ * required: true
+ * schema: { type: string }
+ * responses:
+ * 200: { description: "Product removed" }
+ * put:
+ * summary: Update item quantity
+ * tags: [Cart]
+ * parameters:
+ * - in: path
+ * name: productId
+ * required: true
+ * schema: { type: string }
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * quantity: { type: number }
+ * responses:
+ * 200: { description: "Quantity updated" }
  */
 export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
   const { productId } = req.params;
@@ -136,7 +182,7 @@ export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
     (item) => item.productId.toString() !== productId,
   );
   cart.totalPrice = cart.items.reduce(
-    (sum, item) => sum + item.quantity * (item.price || 0),
+    (sum, item) => sum + item.quantity * (item.priceAtPurchase || 0),
     0,
   );
 
@@ -150,10 +196,6 @@ export const removeItemFromCart = async (req: CustomRequest, res: Response) => {
   res.status(200).json({ message: "Product removed!", data: cart });
 };
 
-/**
- * @desc    Update cart item quantity
- * @route   PUT /api/v1/cart/:productId
- */
 export const updateQuantity = async (req: CustomRequest, res: Response) => {
   const { productId } = req.params;
   const { quantity } = req.body;

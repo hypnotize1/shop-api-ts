@@ -9,9 +9,31 @@ import redisClient from "../configs/redis.js";
 type CreateProductRequest = CustomRequest & Request<any, any, IProduct>;
 
 /**
- * @desc    Create a new product with an automated slug
- * @route   POST /api/products
- * @access  Private
+ * @openapi
+ * /products:
+ * post:
+ * summary: Create a new product
+ * tags: [Product]
+ * security:
+ * - bearerAuth: []
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * required: [title, price, stock]
+ * properties:
+ * title: { type: string }
+ * price: { type: number }
+ * stock: { type: number }
+ * responses:
+ * 201: { description: "Product created" }
+ * get:
+ * summary: Get all products
+ * tags: [Product]
+ * responses:
+ * 200: { description: "List of products (Cached)" }
  */
 export const createProduct = async (
   req: CreateProductRequest,
@@ -53,11 +75,6 @@ export const createProduct = async (
   res.status(201).json({ newProduct });
 };
 
-/**
- * @desc    Get all products
- * @route   GET /api/products
- * @access  Public
- */
 export const getAllProducts = async (req: Request, res: Response) => {
   // 1. Define a unique cache key for this specific query
   const cacheKey = "products:all";
@@ -87,9 +104,43 @@ export const getAllProducts = async (req: Request, res: Response) => {
 };
 
 /**
- * @desc    Get single product by slug
- * @route   GET /api/products/:slug
- * @access  Public
+ * @openapi
+ * /products/{slug}:
+ * get:
+ * summary: Get single product by slug
+ * tags: [Product]
+ * parameters:
+ * - in: path
+ * name: slug
+ * required: true
+ * schema: { type: string }
+ * responses:
+ * 200: { description: "Product found" }
+ * 404: { description: "Product not found" }
+ * put:
+ * summary: Update a product
+ * tags: [Product]
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: path
+ * name: slug
+ * required: true
+ * schema: { type: string }
+ * responses:
+ * 200: { description: "Product updated" }
+ * delete:
+ * summary: Delete a product
+ * tags: [Product]
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: path
+ * name: slug
+ * required: true
+ * schema: { type: string }
+ * responses:
+ * 200: { description: "Product deleted" }
  */
 type GetProductParams = { slug: string };
 
@@ -109,11 +160,6 @@ export const getProductBySlug = async (
   }
 };
 
-/**
- * @desc    Update a product by slug
- * @route   PUT /api/products/:slug
- * @access  Private
- */
 export const updateProduct = async (req: CustomRequest, res: Response) => {
   const { slug } = req.params;
 
@@ -133,12 +179,6 @@ export const updateProduct = async (req: CustomRequest, res: Response) => {
   // Send response
   res.status(200).json(updatedProduct);
 };
-
-/**
- * @desc    Delete a product by slug
- * @route   DELETE /api/products/:slug
- * @access  Private
- */
 
 export const deleteProduct = async (req: CustomRequest, res: Response) => {
   const { slug } = req.params;

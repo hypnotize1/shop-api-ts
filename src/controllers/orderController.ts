@@ -8,9 +8,26 @@ import { CustomRequest } from "../middlewares/auth.middleware.js";
 import redisClient from "../configs/redis.js";
 
 /**
- * @desc    Create a new order from user's cart using MongoDB ACID Transactions
- * @route   POST /api/v1/orders
- * @access  Private
+ * @openapi
+ * /orders:
+ * post:
+ * summary: Create a new order (ACID Transaction)
+ * tags: [Order]
+ * security:
+ * - bearerAuth: []
+ * responses:
+ * 201:
+ * description: Order created successfully
+ * content:
+ * application/json:
+ * schema:
+ * $ref: '#/components/schemas/Order'
+ * type: object
+ * properties:
+ * message: { type: string }
+ * data: { type: object }
+ * 400: { description: "Cart is empty or stock insufficient" }
+ * 401: { description: "Unauthorized" }
  */
 export const createOrder = async (req: CustomRequest, res: Response) => {
   const user = req.user;

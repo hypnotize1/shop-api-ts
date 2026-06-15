@@ -8,6 +8,8 @@ import userRouter from "./routes/userRoutes.js";
 import cartRouter from "./routes/cartRoutes.js";
 import orderRouter from "./routes/orderRoutes.js";
 import paymentRouter from "./routes/payment.routes.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./utils/swagger.js";
 
 const app: Application = express();
 const port: number = 3000; // The port your express server will be running on.
@@ -27,6 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Parse JSON bodies (API payloads)
 app.use(express.json());
+
+// Swagger
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 /**
  * @desc    Routes Mount
